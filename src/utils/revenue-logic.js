@@ -1,0 +1,325 @@
+import { read, utils } from 'xlsx';
+
+// ... (previous parsers remain unchanged)
+
+// Helper to clean and parse float strict
+const parseAmount = (val) => {
+    if (typeof val === 'number') return val;
+    if (!val) return 0;
+    const cleanStr = val.toString().replace(/[^0-9.-]+/g, "");
+    return parseFloat(cleanStr) || 0;
+};
+
+// Helper to parse Excel dates
+const parseDateInfo = (val) => {
+    let dateObj = null;
+    if (typeof val === 'number') {
+        dateObj = new Date(Math.round((val - 25569) * 86400 * 1000));
+    } else if (typeof val === 'string') {
+        const parts = val.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
+        if (parts) {
+            dateObj = new Date(`${parts[3]}-${parts[2]}-${parts[1]}`);
+        } else {
+            dateObj = new Date(val);
+        }
+    }
+
+    if (!dateObj || isNaN(dateObj.getTime())) return { display: val || '', monthYear: 'Unknown' };
+
+    const display = dateObj.toLocaleDateString('en-GB');
+    const monthYear = dateObj.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+    return { display, monthYear, raw: dateObj };
+};
+
+export const parseExcelFile = async (file) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                resolve(sheet);
+            } catch (err) {
+                reject(err);
+            }
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+    });
+};
+
+export const processIPD = (sheet, fileName) => {
+    const rawData = utils.sheet_to_json(sheet, { header: 1 });
+    let headerRowIndex = -1;
+    // Find header row
+    for (let i = 0; i < 20; i++) {
+        const row = rawData[i] || [];
+        const rowStr = row.map(c => c ? c.toString().trim() : '');
+        if (rowStr.includes('Deposit') || rowStr.includes('PatientName')) {
+            headerRowIndex = i;
+            break;
+        }
+    }
+    if (headerRowIndex === -1) headerRowIndex = 3;
+
+    const headers = rawData[headerRowIndex];
+    const colMap = {};
+    if (headers) {
+        headers.forEach((h, i) => {
+            if (h) colMap[h.toString().trim()] = i;
+        });
+    }
+
+    const dataRows = rawData.slice(headerRowIndex + 1);
+    return dataRows.map((row, idx) => {
+        const patient = row[colMap['PatientName']] || row[colMap['Patient Name']] || row[2];
+        const dateVal = row[colMap['BillDate']] || row[colMap['Bill Date']] || row[13];
+        const depositAmt = row[colMap['Deposit']] || row[16];
+        const serviceName = row[colMap['remarks']] || row[18] || "IPD Treatment";
+        const grossAmount = parseAmount(depositAmt);
+
+        if (!dateVal || !patient) return null;
+
+        const { display, monthYear } = parseDateInfo(dateVal);
+
+        return {
+            id: `ipd-${fileName}-${idx}`,
+            date: display,
+            monthYear,
+            patientName: patient,
+            serviceName: serviceName,
+            category: 'IPD',
+            grossAmount: grossAmount,
+            calculatedShare: grossAmount * 0.20,
+            sourceFile: fileName,
+            sourceType: 'IPD'
+        };
+    }).filter(item => item !== null && item.grossAmount > 0);
+};
+
+// Common exclusion logic
+const isExcluded = (serviceName, serviceType) => {
+    if (!serviceName) return true;
+    if (serviceType === 'Laboratory' || serviceType === 'Radiology') return true;
+
+    // Expanded exclusion list
+    const exclusions = [
+        'Ambulance', 'Registration', 'IM/IV', 'Blood Test', 'Drugs', 'Consumables',
+        'CT Scan', 'CT PNS', 'X-Ray', 'X Ray', 'USG', 'Injection', 'Cannula'
+    ];
+
+    return exclusions.some(ex => serviceName.toString().toLowerCase().includes(ex.toLowerCase()));
+};
+
+export const processOPDConsult = (sheet, fileName) => {
+    const rawData = utils.sheet_to_json(sheet, { header: 1 });
+    const dataRows = rawData.slice(1);
+
+    return dataRows.map((row, idx) => {
+        const serviceType = row[15];
+        const serviceName = row[13];
+        const dateVal = row[3];
+        const patient = row[5];
+        const netAmount = parseAmount(row[20]);
+
+        if (!patient || isExcluded(serviceName, serviceType)) return null;
+
+        const { display, monthYear } = parseDateInfo(dateVal);
+
+        return {
+            id: `opd-consult-${fileName}-${idx}`,
+            date: display,
+            monthYear,
+            patientName: patient,
+            serviceName: serviceName,
+            category: 'OPD Consultation',
+            grossAmount: netAmount,
+            calculatedShare: netAmount * 0.70,
+            sourceFile: fileName,
+            sourceType: 'OPD_Consult'
+        };
+    }).filter(item => item !== null);
+};
+
+export const processOPDProcedure = (sheet, fileName) => {
+    const rawData = utils.sheet_to_json(sheet, { header: 1 });
+    const dataRows = rawData.slice(1);
+
+    return dataRows.map((row, idx) => {
+        const serviceType = row[15];
+        const serviceName = row[13];
+        const dateVal = row[3];
+        const patient = row[5];
+        const netAmount = parseAmount(row[20]);
+
+        if (!patient || isExcluded(serviceName, serviceType)) return null;
+
+        const { display, monthYear } = parseDateInfo(dateVal);
+
+        return {
+            id: `opd-proc-${fileName}-${idx}`,
+            date: display,
+            monthYear,
+            patientName: patient,
+            serviceName: serviceName,
+            category: 'OPD Procedure',
+            grossAmount: netAmount,
+            calculatedShare: netAmount * 0.50,
+            sourceFile: fileName,
+            sourceType: 'OPD_Procedure'
+        };
+    }).filter(item => item !== null);
+};
+
+
+export const generateExport = (data, salary = 0) => {
+    // 1. Segmentation
+    const segments = {
+        IPD: [],
+        Consults: [],
+        Procedures: [],
+        Dressings: []
+    };
+
+    // Date sorter
+    const parseD = (dStr) => {
+        if (!dStr) return 0;
+        const p = dStr.split('/');
+        if (p.length !== 3) return 0;
+        return new Date(`${p[2]}-${p[1]}-${p[0]}`).getTime();
+    };
+    const dateSort = (a, b) => parseD(a.date) - parseD(b.date);
+
+    // Distribute
+    data.forEach(item => {
+        if (item.category === 'IPD') {
+            segments.IPD.push(item);
+        } else if (item.category === 'OPD Consultation') {
+            segments.Consults.push(item);
+        } else {
+            // Check dressing key words
+            const name = item.serviceName.toLowerCase();
+            if (name.includes('dressing') || name.includes('suture removal')) {
+                segments.Dressings.push(item);
+            } else {
+                segments.Procedures.push(item);
+            }
+        }
+    });
+
+    // Sort each segment
+    Object.keys(segments).forEach(k => segments[k].sort(dateSort));
+
+    // 2. Build Worksheet Arrays
+    const rows = [];
+    const headers = ['S.No', 'Date', 'Patient Name', 'Service', 'Category', 'Hospital Amount', 'My Share'];
+
+    const addSegment = (title, items) => {
+        if (items.length === 0) return;
+
+        // Segment Header
+        rows.push([title.toUpperCase(), '', '', '', '', '', '']); // Bold-ish via caps
+        rows.push(headers);
+
+        let segTotalGross = 0;
+        let segTotalShare = 0;
+
+        items.forEach((item, idx) => {
+            rows.push([
+                idx + 1, // S.No reset
+                item.date,
+                item.patientName,
+                item.serviceName,
+                item.category,
+                item.grossAmount,
+                item.calculatedShare
+            ]);
+            segTotalGross += item.grossAmount;
+            segTotalShare += item.calculatedShare;
+        });
+
+        // Segment Total
+        rows.push(['', '', 'TOTAL ' + title, '', '', segTotalGross, segTotalShare]);
+        rows.push([]); // Spacer
+        rows.push([]); // Spacer for "Bold Border" effect (visual gap)
+    };
+
+    addSegment('IPD Sections', segments.IPD);
+    addSegment('OPD Consultations', segments.Consults);
+    addSegment('OPD Procedures', segments.Procedures);
+    addSegment('OPD Dressings', segments.Dressings);
+
+    // 3. Side Stats (Starting at Column L -> Index 11)
+    // Calculate Stats
+    const totalRev = data.reduce((s, i) => s + i.calculatedShare, 0);
+    const ipdShare = segments.IPD.reduce((s, i) => s + i.calculatedShare, 0);
+    const consultShare = segments.Consults.reduce((s, i) => s + i.calculatedShare, 0);
+    const procShare = segments.Procedures.reduce((s, i) => s + i.calculatedShare, 0);
+    const dressingShare = segments.Dressings.reduce((s, i) => s + i.calculatedShare, 0);
+
+    // Counts
+    const totalAdmissions = segments.IPD.length;
+    const totalOPDs = segments.Consults.length; // User req: Consults only
+    const emergProcCount = segments.Procedures.filter(i => i.grossAmount > 1600 || i.serviceName.toLowerCase().includes('suturing')).length;
+    const dressingCount = segments.Dressings.length;
+
+    const incentive = totalRev - salary;
+    const netPayout = incentive * 0.9;
+
+    const statsBlock = [
+        ['SUMMARY STATISTICS', 'VALUE'],
+        ['Total Admissions', totalAdmissions],
+        ['Total OPD Consults', totalOPDs],
+        ['Emergency Procs', emergProcCount],
+        ['Dressings Done', dressingCount],
+        ['', ''],
+        ['REVENUE BREAKDOWN', 'INR'],
+        ['IPD Share', ipdShare],
+        ['Consult Share', consultShare],
+        ['Procedure Share', procShare], // Note: this is strictly non-dressing procs now in this split
+        ['Dressing Share', dressingShare], // Breaking it out
+        ['', ''],
+        ['FINANCIALS', 'INR'],
+        ['Total Revenue', totalRev],
+        ['Current Salary', salary],
+        ['Incentive (Rev-Sal)', incentive],
+        ['Net Payout (10% TDS)', netPayout]
+    ];
+
+    // Merge Stats into Frames
+    // We'll overwrite cells in the generated sheet starting from row 2, col 11 (K)
+
+    const ws = utils.aoa_to_sheet(rows);
+
+    // Add stats manually to the sheet object
+    const startCol = 9; // Column J (0-indexed 9) -> Leave H, I empty. Start J, K.
+    const startRow = 1; // Row 2
+
+    statsBlock.forEach((statRow, rIdx) => {
+        statRow.forEach((val, cIdx) => {
+            const cellRef = utils.encode_cell({ c: startCol + cIdx, r: startRow + rIdx });
+            const cell = { v: val, t: typeof val === 'number' ? 'n' : 's' };
+            ws[cellRef] = cell;
+        });
+    });
+
+    // Update Range to include new stats columns
+    const range = utils.decode_range(ws['!ref']);
+    if (range.e.c < startCol + 1) range.e.c = startCol + 1;
+    if (range.e.r < startRow + statsBlock.length) range.e.r = startRow + statsBlock.length;
+    ws['!ref'] = utils.encode_range(range);
+
+    // Columns Widths
+    ws['!cols'] = [
+        { wch: 6 }, { wch: 12 }, { wch: 25 }, { wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, // Main Data
+        { wch: 5 }, { wch: 5 }, // Spacers
+        { wch: 25 }, { wch: 15 } // Stats
+    ];
+
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, "Revenue Report");
+
+    return wb;
+};
