@@ -24,7 +24,7 @@ const DropArea = ({ label, icon: Icon, onDrop, file, colorClass, compact }) => {
             onDrop={handleDrop}
             className={cn(
                 "relative flex items-center border rounded-xl transition-all duration-300 cursor-pointer group flex-1 min-w-0 shadow-sm", // added flex-1 and min-w-0 for proper grid expansion
-                compact ? "h-16 px-4 space-x-3" : "h-40 flex-col",
+                compact ? "h-16 px-3 space-x-2" : "h-40 flex-col",
                 isDragOver ? "bg-slate-50 scale-[1.02] border-emerald-400" : "bg-white",
                 file ? "border-emerald-200 bg-emerald-50/40" : "border-slate-200 hover:border-slate-400 hover:bg-slate-50"
             )}
