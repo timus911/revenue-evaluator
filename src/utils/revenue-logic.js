@@ -80,7 +80,7 @@ const processIPD = (sheet, fileName) => {
         const patient = row[colMap['PatientName']] || row[colMap['Patient Name']] || row[2];
         const dateVal = row[colMap['BillDate']] || row[colMap['Bill Date']] || row[13];
         const depositAmt = row[colMap['Deposit']] || row[16];
-        const serviceName = row[colMap['remarks']] || row[18] || "IPD Treatment";
+        const serviceName = (row[colMap['remarks']] || row[18] || "IPD Treatment").toString();
         const grossAmount = parseAmount(depositAmt);
 
         if (!dateVal || !patient) return null;
@@ -121,7 +121,7 @@ const processOPD = (sheet, fileName, isConsultFile) => {
 
     return dataRows.map((row, idx) => {
         const serviceType = row[15];
-        const serviceName = row[13];
+        const serviceName = (row[13] || '').toString();
         const dateVal = row[3];
         const patient = row[5];
         const netAmount = parseAmount(row[20]);
