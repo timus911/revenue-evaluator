@@ -108,17 +108,47 @@ const processIPD = (sheet, fileName) => {
 // Exclusion Logic
 const isExcluded = (serviceName, serviceType) => {
     if (!serviceName) return true;
-    if (serviceType === 'Laboratory' || serviceType === 'Radiology') return true;
+    const normalizedName = serviceName.toString().toLowerCase();
+
+    // 1. Broad Categories (Service Type)
+    if (['Laboratory', 'Radiology', 'Pharmacy', 'Consumables', 'Ambulance'].includes(serviceType)) return true;
+
+    // 2. Specific Keywords Blocklist
     const exclusions = [
-        'Ambulance', 'Registration', 'IM/IV', 'Blood Test', 'Drugs', 'Consumables',
-        'CT Scan', 'CT PNS', 'X-Ray', 'X Ray', 'USG', 'Injection', 'Cannula',
-        'Ncct', 'Physiotherapy', 'Ecg', 'Hrct', 'Electrocardiogram', 'Cut Down',
-        'Ultrasound', 'Doppler', 'Ct Head', 'Chest Xray', 'Iv Sline', 'Infusion',
-        'Ryle Tube', 'Catheterisation', 'Extremities', 'Joints', 'Bones',
-        'Emergency Bed Charges', 'Bed Charges', 'Enema', 'Ct Chest', 'Nebuliser',
-        'Echo', 'Echocardiography'
+        // -- Radiology & Imaging --
+        'X-Ray', 'X Ray', 'Xray', 'Chest X', 'Extremities', 'Joints', 'Bones',
+        'CT Scan', 'NCCT', 'CECT', 'HRCT', 'CT Head', 'CT Chest', 'CT PNS', 'Ct Face',
+        'MRI', 'MR Scan', 'Mammography', 'OPG',
+        'Ultrasound', 'USG', 'Sonography', 'Doppler', 'Echo', 'Echocardiography',
+
+        // -- Diagnostics (Non-Lab) --
+        'ECG', 'Electrocardiogram', 'TMT', 'Holter', 'PFT', 'Uroflowmetry',
+        'EEG', 'EMG', 'NCV', 'Audiometry',
+
+        // -- Procedures (Non-Surgical/Nursing) --
+        'Injection', 'Inj ', 'IM/IV', 'Cannula', 'Cath', 'Catheterisation', 'Ryle Tube',
+        'Nebuliser', 'Nebulization', 'Steam', 'Enema', 'Physiotherapy', 'Physio',
+        'Dressing Charge', // Careful: User does dressings, but "Dressing Charge" might be nursing? 
+        // User previously said "Dressings Done" is a metric. 
+        // Let's keep specific nursing tasks out if ambiguous, but user explicitly asked for:
+        // "Iv Sline", "Infusion", "Cut Down" (Cut down is minor surgical? User asked to omit it).
+        'Iv Set', 'Iv Fluid', 'Infusion', 'Cut Down', 'Suture Removal Charge', // If 'Charge' implies nursing? 
+        // User explicitly asked to omit "Cut Down Set".
+
+        // -- Admin & Hospital --
+        'Registration', 'Admission', 'File Charge', 'Card', 'Renewal',
+        'Bed Charge', 'Room Rent', 'Nursing', 'DMO', 'RMO', 'Ambulance',
+        'Diet', 'Food', 'Beverage', 'MLC', 'Biomedical', 'Service Charge',
+
+        // -- Lab Keywords (in case ServiceType matches fail) --
+        'Blood', 'Urine', 'Stool', 'Culture', 'Biospy', 'Pathology', 'Sample', 'Test', 'Profile',
+        'Sugar', 'Glucose', 'Hemoglobin', 'CBC', 'Platelet', 'Creatinine',
+
+        // -- Pharmacy/Consumables --
+        'Drug', 'Medicine', 'Tablet', 'Cap ', 'Syringe', 'Gloves', 'Mask', 'Cotton', 'Bandage'
     ];
-    return exclusions.some(ex => serviceName.toString().toLowerCase().includes(ex.toLowerCase()));
+
+    return exclusions.some(ex => normalizedName.includes(ex.toLowerCase()));
 };
 
 // Generic OPD Processor (Mixed Support)
