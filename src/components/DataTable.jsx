@@ -94,7 +94,7 @@ const DataTable = ({ data, salary = 0, monthMultiplier = 1, onRemove, onUpdateDe
                         {filteredData.map((row, idx) => (
                             <tr key={row.id} className={cn(
                                 "transition-colors group",
-                                row.isDeleted ? "bg-slate-50 opacity-60" : "hover:bg-slate-50"
+                                row.isDeleted ? "bg-red-50 opacity-75" : "hover:bg-slate-50"
                             )}>
                                 <td className={cn("px-4 py-1.5 font-mono text-slate-500 whitespace-nowrap", row.isDeleted && "line-through decoration-slate-400")}>{row.date}</td>
                                 <td className={cn("px-4 py-1.5 font-medium text-slate-900", row.isDeleted && "line-through decoration-slate-400 text-slate-500")}>{row.patientName}</td>

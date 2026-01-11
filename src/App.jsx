@@ -190,7 +190,7 @@ function App() {
                     <div className="max-w-7xl mx-auto flex items-center justify-between mb-2">
                         {/* Logo */}
                         <div className="w-1/4">
-                            <h1 className="text-xl font-extrabold tracking-tight text-slate-900">Revenue Eval</h1>
+                            <h1 className="text-xl font-extrabold tracking-tight text-slate-900">RevEval</h1>
                         </div>
 
                         {/* Center Uploader - Wide */}

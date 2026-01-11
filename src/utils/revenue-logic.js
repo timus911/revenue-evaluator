@@ -320,18 +320,18 @@ export const generateExport = (data, salary = 0, monthMultiplier = 1) => {
     addSegment('OPD Dressings', segments.Dressings);
 
     // 3. Side Stats (Starting at Column L -> Index 11)
-    // Calculate Stats
-    const totalRev = data.reduce((s, i) => s + i.calculatedShare, 0);
-    const ipdShare = segments.IPD.reduce((s, i) => s + i.calculatedShare, 0);
-    const consultShare = segments.Consults.reduce((s, i) => s + i.calculatedShare, 0);
-    const procShare = segments.Procedures.reduce((s, i) => s + i.calculatedShare, 0);
-    const dressingShare = segments.Dressings.reduce((s, i) => s + i.calculatedShare, 0);
+    // Calculate Stats (Exclude Deleted)
+    const totalRev = data.reduce((s, i) => s + (i.isDeleted ? 0 : i.calculatedShare), 0);
+    const ipdShare = segments.IPD.reduce((s, i) => s + (i.isDeleted ? 0 : i.calculatedShare), 0);
+    const consultShare = segments.Consults.reduce((s, i) => s + (i.isDeleted ? 0 : i.calculatedShare), 0);
+    const procShare = segments.Procedures.reduce((s, i) => s + (i.isDeleted ? 0 : i.calculatedShare), 0);
+    const dressingShare = segments.Dressings.reduce((s, i) => s + (i.isDeleted ? 0 : i.calculatedShare), 0);
 
-    // Counts
-    const totalAdmissions = segments.IPD.length;
-    const totalOPDs = segments.Consults.length; // User req: Consults only
-    const emergProcCount = segments.Procedures.filter(i => i.grossAmount > 1600 || (i.serviceName || '').toString().toLowerCase().includes('suturing')).length;
-    const dressingCount = segments.Dressings.length;
+    // Counts (Exclude Deleted)
+    const totalAdmissions = segments.IPD.filter(i => !i.isDeleted).length;
+    const totalOPDs = segments.Consults.filter(i => !i.isDeleted).length; // User req: Consults only
+    const emergProcCount = segments.Procedures.filter(i => !i.isDeleted && (i.grossAmount > 1600 || (i.serviceName || '').toString().toLowerCase().includes('suturing'))).length;
+    const dressingCount = segments.Dressings.filter(i => !i.isDeleted).length;
 
     const totalSalary = salary * monthMultiplier;
     const incentive = totalRev - totalSalary;
