@@ -157,7 +157,8 @@ export const processFileAuto = (sheet, fileName) => {
     let isIPD = false;
     for (let i = 0; i < 15; i++) {
         const rowStr = (rawData[i] || []).join(' ').toLowerCase();
-        if (rowStr.includes('deposit') || (rowStr.includes('patientname') && rowStr.includes('billdate'))) {
+        // Strict check: IPD file MUST have 'Deposit' column
+        if (rowStr.includes('deposit')) {
             isIPD = true;
             break;
         }
