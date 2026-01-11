@@ -83,7 +83,10 @@ const processIPD = (sheet, fileName) => {
         const serviceName = (row[colMap['remarks']] || row[18] || "IPD Treatment").toString();
         const grossAmount = parseAmount(depositAmt);
 
-        if (!dateVal || !patient) return null;
+        // Treat 'IPD Treatment' as a generic name that should NOT be excluded unless specific
+        // But if serviceName matches an exclusion, skip it.
+        // We pass 'IPD' as serviceType to allow isExcluded to handle it if needed
+        if (!dateVal || !patient || isExcluded(serviceName, 'IPD')) return null;
 
         const { display, monthYear } = parseDateInfo(dateVal);
 
@@ -111,7 +114,8 @@ const isExcluded = (serviceName, serviceType) => {
         'CT Scan', 'CT PNS', 'X-Ray', 'X Ray', 'USG', 'Injection', 'Cannula',
         'Ncct', 'Physiotherapy', 'Ecg', 'Hrct', 'Electrocardiogram', 'Cut Down',
         'Ultrasound', 'Doppler', 'Ct Head', 'Chest Xray', 'Iv Sline', 'Infusion',
-        'Ryle Tube', 'Catheterisation'
+        'Ryle Tube', 'Catheterisation', 'Extremities', 'Joints', 'Bones',
+        'Emergency Bed Charges', 'Bed Charges'
     ];
     return exclusions.some(ex => serviceName.toString().toLowerCase().includes(ex.toLowerCase()));
 };
