@@ -35,7 +35,7 @@ const Dashboard = ({ summary, salary, onSalaryChange, monthMultiplier = 1, onMul
                             type="number"
                             value={salary}
                             onChange={(e) => onSalaryChange(Number(e.target.value))}
-                            className="w-24 pl-6 pr-2 py-1 text-sm font-semibold border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 outline-none"
+                            className="w-32 pl-6 pr-2 py-1 text-sm font-semibold border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 outline-none"
                             placeholder="0"
                         />
                     </div>
@@ -45,11 +45,11 @@ const Dashboard = ({ summary, salary, onSalaryChange, monthMultiplier = 1, onMul
                     <label className="text-[10px] font-bold uppercase text-slate-400 mb-1">Months</label>
                     <input
                         type="number"
-                        min="0.5"
-                        step="0.5"
+                        min="1"
+                        step="1"
                         value={monthMultiplier}
                         onChange={(e) => onMultiplierChange(Number(e.target.value))}
-                        className="w-16 px-2 py-1 text-sm font-semibold text-center border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 outline-none"
+                        className="w-12 px-1 py-1 text-sm font-semibold text-center border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
                 </div>
 

@@ -108,7 +108,10 @@ const isExcluded = (serviceName, serviceType) => {
     if (serviceType === 'Laboratory' || serviceType === 'Radiology') return true;
     const exclusions = [
         'Ambulance', 'Registration', 'IM/IV', 'Blood Test', 'Drugs', 'Consumables',
-        'CT Scan', 'CT PNS', 'X-Ray', 'X Ray', 'USG', 'Injection', 'Cannula'
+        'CT Scan', 'CT PNS', 'X-Ray', 'X Ray', 'USG', 'Injection', 'Cannula',
+        'Ncct', 'Physiotherapy', 'Ecg', 'Hrct', 'Electrocardiogram', 'Cut Down',
+        'Ultrasound', 'Doppler', 'Ct Head', 'Chest Xray', 'Iv Sline', 'Infusion',
+        'Ryle Tube', 'Catheterisation'
     ];
     return exclusions.some(ex => serviceName.toString().toLowerCase().includes(ex.toLowerCase()));
 };
