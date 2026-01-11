@@ -121,6 +121,13 @@ function App() {
         }
     }, [filters]);
 
+    // Auto-calculate months based on data
+    React.useEffect(() => {
+        if (filterGroups.length > 0) {
+            setMonthMultiplier(filterGroups.length);
+        }
+    }, [filterGroups]);
+
     const toggleFilter = (id) => {
         setActiveFilters(prev =>
             prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
