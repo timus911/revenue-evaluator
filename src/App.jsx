@@ -126,17 +126,6 @@ function App() {
         }, { totalRevenue: 0, ipdShare: 0, opdConsultShare: 0, opdProcedureShare: 0 });
     }, [viewData]);
 
-    // 3. Count Unique Months for Salary Multiplier
-    const monthCount = useMemo(() => {
-        const months = new Set();
-        processedData.forEach(p => {
-            if (p.monthYear && p.monthYear !== 'Unknown') months.add(p.monthYear);
-        });
-        return months.size || 1;
-    }, [processedData]);
-
-    const totalSalary = salary * monthCount;
-
     return (
         <ErrorBoundary>
             <div className="h-screen bg-slate-50 text-slate-900 overflow-hidden flex flex-col">
@@ -196,15 +185,9 @@ function App() {
                                 <StatsOverview data={viewData} />
                             </div>
                             <div className="shrink-0">
-                                <Dashboard
-                                    summary={summary}
-                                    salary={salary}
-                                    monthCount={monthCount}
-                                    totalSalary={totalSalary}
-                                    onSalaryChange={setSalary}
-                                />
+                                <Dashboard summary={summary} salary={salary} onSalaryChange={setSalary} />
                             </div>
-                            <DataTable data={viewData} salary={totalSalary} />
+                            <DataTable data={viewData} salary={salary} />
                         </div>
                     ) : (
                         <div className="h-full flex items-center justify-center text-slate-300">
