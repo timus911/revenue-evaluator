@@ -278,7 +278,7 @@ export const generateExport = (data, salary = 0) => {
     // Counts
     const totalAdmissions = segments.IPD.length;
     const totalOPDs = segments.Consults.length; // User req: Consults only
-    const emergProcCount = segments.Procedures.filter(i => i.grossAmount > 1600 || i.serviceName.toLowerCase().includes('suturing')).length;
+    const emergProcCount = segments.Procedures.filter(i => i.grossAmount > 1600 || (i.serviceName || '').toString().toLowerCase().includes('suturing')).length;
     const dressingCount = segments.Dressings.length;
 
     const incentive = totalRev - salary;

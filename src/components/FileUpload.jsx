@@ -51,11 +51,11 @@ const FileUpload = ({ onUpload, compact = false }) => {
                     <div className={cn("bg-slate-100 p-1.5 rounded-full group-hover:bg-white transition-colors shrink-0", isDragOver && "bg-emerald-100")}>
                         <Upload className={cn("text-slate-500 w-4 h-4", isDragOver && "text-emerald-600")} />
                     </div>
-                    <div className="text-left">
-                        <p className="text-sm font-semibold text-slate-700 leading-tight">
-                            {uploadedFiles.length > 0 ? `${uploadedFiles.length} files loaded` : "Drop Data Files"}
+                    <div className="text-left min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-700 leading-tight truncate">
+                            {uploadedFiles.length > 0 ? `${uploadedFiles.length} files loaded` : "Drop Files"}
                         </p>
-                        <p className="text-[10px] text-slate-400 mt-0 leading-tight">IPD, Consults, Procedures</p>
+                        <p className="text-[10px] text-slate-400 mt-0 leading-tight truncate">Data Sheets</p>
                     </div>
                 </div>
             </div>
