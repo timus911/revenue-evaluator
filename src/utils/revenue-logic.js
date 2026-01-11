@@ -50,7 +50,10 @@ export const parseExcelFile = async (file) => {
     });
 };
 
-export const processIPD = (sheet, fileName) => {
+// ... (Keep parseExcelFile and helpers: parseAmount, parseDateInfo)
+
+// IPD Logic
+const processIPD = (sheet, fileName) => {
     const rawData = utils.sheet_to_json(sheet, { header: 1 });
     let headerRowIndex = -1;
     // Find header row
@@ -99,22 +102,21 @@ export const processIPD = (sheet, fileName) => {
     }).filter(item => item !== null && item.grossAmount > 0);
 };
 
-// Common exclusion logic
+// Exclusion Logic
 const isExcluded = (serviceName, serviceType) => {
     if (!serviceName) return true;
     if (serviceType === 'Laboratory' || serviceType === 'Radiology') return true;
-
-    // Expanded exclusion list
     const exclusions = [
         'Ambulance', 'Registration', 'IM/IV', 'Blood Test', 'Drugs', 'Consumables',
         'CT Scan', 'CT PNS', 'X-Ray', 'X Ray', 'USG', 'Injection', 'Cannula'
     ];
-
     return exclusions.some(ex => serviceName.toString().toLowerCase().includes(ex.toLowerCase()));
 };
 
-export const processOPDConsult = (sheet, fileName) => {
+// Generic OPD Processor
+const processOPD = (sheet, fileName, isConsultFile) => {
     const rawData = utils.sheet_to_json(sheet, { header: 1 });
+    // find header? usually row 0 for OPD based on history
     const dataRows = rawData.slice(1);
 
     return dataRows.map((row, idx) => {
@@ -128,49 +130,63 @@ export const processOPDConsult = (sheet, fileName) => {
 
         const { display, monthYear } = parseDateInfo(dateVal);
 
+        const category = isConsultFile ? 'OPD Consultation' : 'OPD Procedure';
+        const sharePct = isConsultFile ? 0.70 : 0.50;
+
         return {
-            id: `opd-consult-${fileName}-${idx}`,
+            id: `opd-${isConsultFile ? 'c' : 'p'}-${fileName}-${idx}`,
             date: display,
             monthYear,
             patientName: patient,
             serviceName: serviceName,
-            category: 'OPD Consultation',
+            category: category,
             grossAmount: netAmount,
-            calculatedShare: netAmount * 0.70,
+            calculatedShare: netAmount * sharePct,
             sourceFile: fileName,
-            sourceType: 'OPD_Consult'
+            sourceType: isConsultFile ? 'OPD_Consult' : 'OPD_Procedure'
         };
     }).filter(item => item !== null);
 };
 
-export const processOPDProcedure = (sheet, fileName) => {
+// Main Auto-Detect Function
+export const processFileAuto = (sheet, fileName) => {
     const rawData = utils.sheet_to_json(sheet, { header: 1 });
-    const dataRows = rawData.slice(1);
 
-    return dataRows.map((row, idx) => {
-        const serviceType = row[15];
-        const serviceName = row[13];
-        const dateVal = row[3];
-        const patient = row[5];
-        const netAmount = parseAmount(row[20]);
+    // 1. Check for IPD Signature (Deposit column)
+    // Scan first 10 rows
+    let isIPD = false;
+    for (let i = 0; i < 15; i++) {
+        const rowStr = (rawData[i] || []).join(' ').toLowerCase();
+        if (rowStr.includes('deposit') || (rowStr.includes('patientname') && rowStr.includes('billdate'))) {
+            isIPD = true;
+            break;
+        }
+    }
 
-        if (!patient || isExcluded(serviceName, serviceType)) return null;
+    if (isIPD) {
+        return processIPD(sheet, fileName);
+    }
 
-        const { display, monthYear } = parseDateInfo(dateVal);
+    // 2. Check for OPD signatures
+    // Heuristic: Check column 13/15 for "Consultation"
+    // If >10% of rows contain "Consultation", treat as Consult File
+    let consultCount = 0;
+    let procCount = 0;
+    const checkRows = rawData.slice(1, 50); // Sample first 50 data rows
+    checkRows.forEach(r => {
+        const sName = (r[13] || '').toString().toLowerCase();
+        const sType = (r[15] || '').toString().toLowerCase();
+        if (sName.includes('consult') || sType.includes('consult')) {
+            consultCount++;
+        } else if (r[5]) { // Has patient name but not consult
+            procCount++;
+        }
+    });
 
-        return {
-            id: `opd-proc-${fileName}-${idx}`,
-            date: display,
-            monthYear,
-            patientName: patient,
-            serviceName: serviceName,
-            category: 'OPD Procedure',
-            grossAmount: netAmount,
-            calculatedShare: netAmount * 0.50,
-            sourceFile: fileName,
-            sourceType: 'OPD_Procedure'
-        };
-    }).filter(item => item !== null);
+    // If consults are significant, treating as Consult file
+    const isConsultFile = consultCount > 0 && (consultCount > procCount || consultCount > 5);
+
+    return processOPD(sheet, fileName, isConsultFile);
 };
 
 

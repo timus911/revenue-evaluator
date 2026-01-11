@@ -3,7 +3,7 @@ import FileUpload from './components/FileUpload';
 import Dashboard from './components/Dashboard';
 import DataTable from './components/DataTable';
 import StatsOverview from './components/StatsOverview'; // Removed ExportButton as it is now in DataTable
-import { parseExcelFile, processIPD, processOPDConsult, processOPDProcedure } from './utils/revenue-logic';
+import { parseExcelFile, processFileAuto } from './utils/revenue-logic';
 import { Trash2 } from 'lucide-react';
 import { cn } from './utils/cn';
 
@@ -49,24 +49,25 @@ function App() {
     const [activeFilters, setActiveFilters] = useState([]);
     const [salary, setSalary] = useState(250000);
 
-    // 1. Process Logic
-    const handleUpload = async (type, file) => {
-        try {
-            const sheet = await parseExcelFile(file);
-            let newData = [];
-            if (type === 'ipd') newData = processIPD(sheet, file.name);
-            else if (type === 'consult') newData = processOPDConsult(sheet, file.name);
-            else if (type === 'procedure') newData = processOPDProcedure(sheet, file.name);
-
-            setProcessedData(prev => {
-                const currentIds = new Set(prev.map(p => p.id));
-                const unique = newData.filter(n => !currentIds.has(n.id));
-                return [...prev, ...unique];
-            });
-        } catch (e) {
-            console.error(e);
-            alert("Error parsing file: " + file.name);
+    // 1. Process Logic (Auto-Detect)
+    const handleUpload = async (files) => {
+        const allNewData = [];
+        for (const file of files) {
+            try {
+                const sheet = await parseExcelFile(file);
+                const data = processFileAuto(sheet, file.name);
+                allNewData.push(...data);
+            } catch (e) {
+                console.error(e);
+                alert("Error parsing file: " + file.name);
+            }
         }
+
+        setProcessedData(prev => {
+            const currentIds = new Set(prev.map(p => p.id));
+            const unique = allNewData.filter(n => !currentIds.has(n.id));
+            return [...prev, ...unique];
+        });
     };
 
     // 2. Identify Unique Filters (Month + Category)
@@ -141,9 +142,7 @@ function App() {
                             <FileUpload
                                 key={processedData.length === 0 ? 'reset' : 'loaded'}
                                 compact={true}
-                                onUploadIPD={(f) => handleUpload('ipd', f)}
-                                onUploadConsult={(f) => handleUpload('consult', f)}
-                                onUploadProcedure={(f) => handleUpload('procedure', f)}
+                                onUpload={handleUpload}
                             />
                         </div>
 
