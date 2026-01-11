@@ -144,73 +144,109 @@ function App() {
             return activeFilters.includes(key);
         });
     }, [processedData, activeFilters]);
-    // ...
-    // ...
-    {/* Filter Pills Row */ }
-    {
-        filterGroups.length > 0 && (
-            <div className="max-w-7xl mx-auto flex overflow-x-auto pb-1 space-x-4 no-scrollbar justify-center px-4">
-                {filterGroups.map(group => (
-                    <div key={group.label} className="flex items-center space-x-1 p-1 rounded-lg border border-slate-200 bg-slate-50/50">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase mr-1 px-1">{group.label}</span>
-                        {group.items.map(cat => {
-                            const fullCat = cat === 'Cons' ? 'OPD Consult' : cat === 'Proc' ? 'OPD Proc' : 'IPD';
-                            const id = `${group.label}|${fullCat}`;
-                            const isActive = activeFilters.includes(id);
+    const summary = useMemo(() => {
+        return viewData.reduce((acc, item) => {
+            acc.totalRevenue += item.calculatedShare;
+            if (item.category === 'IPD') acc.ipdShare += item.calculatedShare;
+            if (item.category === 'OPD Consultation') acc.opdConsultShare += item.calculatedShare;
+            if (item.category === 'OPD Procedure') acc.opdProcedureShare += item.calculatedShare;
+            return acc;
+        }, { totalRevenue: 0, ipdShare: 0, opdConsultShare: 0, opdProcedureShare: 0 });
+    }, [viewData]);
 
-                            let colorClass = "bg-slate-100 text-slate-400 border-slate-200";
-                            if (isActive) {
-                                if (cat === 'IPD') colorClass = "bg-purple-100 text-purple-700 border-purple-200 shadow-sm";
-                                else if (cat === 'Cons') colorClass = "bg-sky-100 text-sky-700 border-sky-200 shadow-sm";
-                                else if (cat === 'Proc') colorClass = "bg-orange-100 text-orange-700 border-orange-200 shadow-sm";
-                            }
+    return (
+        <ErrorBoundary>
+            <div className="h-screen bg-slate-50 text-slate-900 overflow-hidden flex flex-col">
+                {/* Top Bar: Title + Upload (Center Aligned Wide) + Clear */}
+                <div className="bg-white border-b border-slate-200 px-6 py-3 shrink-0 shadow-sm z-20">
+                    <div className="max-w-7xl mx-auto flex items-center justify-between mb-2">
+                        {/* Logo */}
+                        <div className="w-1/4">
+                            <h1 className="text-xl font-extrabold tracking-tight text-slate-900">Revenue Eval</h1>
+                        </div>
 
-                            return (
-                                <button
-                                    key={cat}
-                                    onClick={() => toggleFilter(id)}
-                                    className={cn(
-                                        "px-2 py-0.5 rounded text-[10px] font-bold uppercase transition-all border",
-                                        colorClass,
-                                        !isActive && "hover:border-slate-300 opacity-60 hover:opacity-100"
-                                    )}
-                                >
-                                    {cat}
+                        {/* Center Uploader - Wide */}
+                        <div className="flex-1 max-w-2xl mx-4">
+                            <FileUpload
+                                key={processedData.length === 0 ? 'reset' : 'loaded'}
+                                compact={true}
+                                onUpload={handleUpload}
+                            />
+                        </div>
+
+                        {/* Clear Button */}
+                        <div className="w-1/4 flex justify-end">
+                            {processedData.length > 0 && (
+                                <button onClick={clearData} className="text-red-500 hover:text-red-700 text-xs font-bold uppercase flex items-center transition-colors">
+                                    <Trash2 className="w-3 h-3 mr-1" /> Clear
                                 </button>
-                            );
-                        })}
+                            )}
+                        </div>
                     </div>
-                ))}
-            </div>
-        )
-    }
-                </div >
 
-        {/* Main Content */ }
-        < div className = "flex-1 overflow-hidden relative" >
-        {
-            processedData.length > 0 ? (
-                <div className="h-full flex flex-col max-w-7xl mx-auto px-6 py-4 space-y-3">
-                    <div className="shrink-0">
-                        <StatsOverview data={viewData} />
-                    </div>
-                    <div className="shrink-0">
-                        <Dashboard
-                            summary={summary}
-                            salary={salary}
-                            onSalaryChange={setSalary}
-                            monthMultiplier={monthMultiplier}
-                            onMultiplierChange={setMonthMultiplier}
-                        />
-                    </div>
-                    <DataTable data={viewData} salary={salary} monthMultiplier={monthMultiplier} />
+                    {/* Filter Pills Row */}
+                    {filterGroups.length > 0 && (
+                        <div className="max-w-7xl mx-auto flex overflow-x-auto pb-1 space-x-4 no-scrollbar justify-center px-4">
+                            {filterGroups.map(group => (
+                                <div key={group.label} className="flex items-center space-x-1 p-1 rounded-lg border border-slate-200 bg-slate-50/50">
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase mr-1 px-1">{group.label}</span>
+                                    {group.items.map(cat => {
+                                        const fullCat = cat === 'Cons' ? 'OPD Consult' : cat === 'Proc' ? 'OPD Proc' : 'IPD';
+                                        const id = `${group.label}|${fullCat}`;
+                                        const isActive = activeFilters.includes(id);
+
+                                        let colorClass = "bg-slate-100 text-slate-400 border-slate-200";
+                                        if (isActive) {
+                                            if (cat === 'IPD') colorClass = "bg-purple-100 text-purple-700 border-purple-200 shadow-sm";
+                                            else if (cat === 'Cons') colorClass = "bg-sky-100 text-sky-700 border-sky-200 shadow-sm";
+                                            else if (cat === 'Proc') colorClass = "bg-orange-100 text-orange-700 border-orange-200 shadow-sm";
+                                        }
+
+                                        return (
+                                            <button
+                                                key={cat}
+                                                onClick={() => toggleFilter(id)}
+                                                className={cn(
+                                                    "px-2 py-0.5 rounded text-[10px] font-bold uppercase transition-all border",
+                                                    colorClass,
+                                                    !isActive && "hover:border-slate-300 opacity-60 hover:opacity-100"
+                                                )}
+                                            >
+                                                {cat}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
-            ) : (
-                <div className="h-full flex items-center justify-center text-slate-300">
-                    <p className="text-sm font-medium uppercase tracking-widest">Awaiting Files</p>
-                </div>
-            )
-        }
+
+                {/* Main Content */}
+                < div className="flex-1 overflow-hidden relative" >
+                    {
+                        processedData.length > 0 ? (
+                            <div className="h-full flex flex-col max-w-7xl mx-auto px-6 py-4 space-y-3">
+                                <div className="shrink-0">
+                                    <StatsOverview data={viewData} />
+                                </div>
+                                <div className="shrink-0">
+                                    <Dashboard
+                                        summary={summary}
+                                        salary={salary}
+                                        onSalaryChange={setSalary}
+                                        monthMultiplier={monthMultiplier}
+                                        onMultiplierChange={setMonthMultiplier}
+                                    />
+                                </div>
+                                <DataTable data={viewData} salary={salary} monthMultiplier={monthMultiplier} />
+                            </div>
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-slate-300">
+                                <p className="text-sm font-medium uppercase tracking-widest">Awaiting Files</p>
+                            </div>
+                        )
+                    }
                 </div >
             </div >
         </ErrorBoundary >
