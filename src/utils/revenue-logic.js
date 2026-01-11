@@ -216,7 +216,7 @@ export const generateExport = (data, salary = 0) => {
             segments.Consults.push(item);
         } else {
             // Check dressing key words
-            const name = item.serviceName.toLowerCase();
+            const name = (item.serviceName || '').toString().toLowerCase();
             if (name.includes('dressing') || name.includes('suture removal')) {
                 segments.Dressings.push(item);
             } else {

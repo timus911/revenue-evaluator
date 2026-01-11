@@ -15,10 +15,13 @@ const DataTable = ({ data, salary = 0 }) => {
             case 'IPD': return data.filter(d => d.category === 'IPD');
             case 'CONSULT': return data.filter(d => d.category === 'OPD Consultation');
             case 'DRESSING': return data.filter(d => {
-                const name = d.serviceName.toLowerCase();
+                const name = (d.serviceName || '').toString().toLowerCase();
                 return name.includes('dressing') || name.includes('suture removal');
             });
-            case 'PROC': return data.filter(d => d.category === 'OPD Procedure' && !d.serviceName.toLowerCase().includes('dressing') && !d.serviceName.toLowerCase().includes('suture removal'));
+            case 'PROC': return data.filter(d => {
+                const name = (d.serviceName || '').toString().toLowerCase();
+                return d.category === 'OPD Procedure' && !name.includes('dressing') && !name.includes('suture removal');
+            });
             default: return data;
         }
     }, [data, filterType]);
