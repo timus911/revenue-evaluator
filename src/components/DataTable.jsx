@@ -4,7 +4,7 @@ import { Download } from 'lucide-react';
 import { generateExport } from '../utils/revenue-logic';
 import * as XLSX from 'xlsx';
 
-const DataTable = ({ data, salary = 0 }) => {
+const DataTable = ({ data, salary = 0, monthMultiplier = 1 }) => {
     const [filterType, setFilterType] = useState('ALL'); // ALL, IPD, CONSULT, DRESSING, PROC
 
     // Moved early return after hooks (Fix for previously fixed crash)
@@ -43,7 +43,7 @@ const DataTable = ({ data, salary = 0 }) => {
     const handleExport = () => {
         if (!data || data.length === 0) return;
         try {
-            const wb = generateExport(data, salary);
+            const wb = generateExport(data, salary, monthMultiplier);
             XLSX.writeFile(wb, `Revenue_Report_${new Date().toISOString().slice(0, 10)}.xlsx`);
         } catch (e) {
             console.error("Export Error:", e);

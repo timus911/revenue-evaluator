@@ -9,9 +9,10 @@ const MiniCard = ({ label, value, colorClass }) => (
     </div>
 );
 
-const Dashboard = ({ summary, salary, onSalaryChange }) => {
+const Dashboard = ({ summary, salary, onSalaryChange, monthMultiplier = 1, onMultiplierChange }) => {
     const { totalRevenue, ipdShare, opdConsultShare, opdProcedureShare } = summary;
-    const incentive = totalRevenue - salary;
+    const totalSalary = salary * monthMultiplier;
+    const incentive = totalRevenue - totalSalary;
     const netIncentive = incentive * 0.90; // TDS 10%
 
     return (
@@ -27,17 +28,29 @@ const Dashboard = ({ summary, salary, onSalaryChange }) => {
             {/* Salary & Incentive - Compact Right Side */}
             <div className="flex items-center space-x-4 bg-slate-50 p-2 rounded-lg border border-slate-100 w-full md:w-auto">
                 <div className="flex flex-col">
-                    <label className="text-[10px] font-bold uppercase text-slate-400 mb-1">Current Salary</label>
+                    <label className="text-[10px] font-bold uppercase text-slate-400 mb-1">Base Salary</label>
                     <div className="relative">
                         <IndianRupee className="w-3 h-3 absolute left-2 top-2 text-slate-400" />
                         <input
                             type="number"
                             value={salary}
                             onChange={(e) => onSalaryChange(Number(e.target.value))}
-                            className="w-32 pl-6 pr-2 py-1 text-sm font-semibold border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 outline-none"
+                            className="w-24 pl-6 pr-2 py-1 text-sm font-semibold border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 outline-none"
                             placeholder="0"
                         />
                     </div>
+                </div>
+
+                <div className="flex flex-col">
+                    <label className="text-[10px] font-bold uppercase text-slate-400 mb-1">Months</label>
+                    <input
+                        type="number"
+                        min="0.5"
+                        step="0.5"
+                        value={monthMultiplier}
+                        onChange={(e) => onMultiplierChange(Number(e.target.value))}
+                        className="w-16 px-2 py-1 text-sm font-semibold text-center border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
                 </div>
 
                 <div className="h-8 w-px bg-slate-200 mx-2"></div>

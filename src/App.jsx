@@ -48,6 +48,7 @@ function App() {
     const [processedData, setProcessedData] = useState([]);
     const [activeFilters, setActiveFilters] = useState([]);
     const [salary, setSalary] = useState(250000);
+    const [monthMultiplier, setMonthMultiplier] = useState(1);
 
     // 1. Process Logic (Auto-Detect)
     const handleUpload = async (files) => {
@@ -103,6 +104,7 @@ function App() {
         setProcessedData([]);
         setActiveFilters([]);
         setSalary(250000);
+        setMonthMultiplier(1);
     };
 
     const viewData = useMemo(() => {
@@ -185,9 +187,15 @@ function App() {
                                 <StatsOverview data={viewData} />
                             </div>
                             <div className="shrink-0">
-                                <Dashboard summary={summary} salary={salary} onSalaryChange={setSalary} />
+                                <Dashboard
+                                    summary={summary}
+                                    salary={salary}
+                                    onSalaryChange={setSalary}
+                                    monthMultiplier={monthMultiplier}
+                                    onMultiplierChange={setMonthMultiplier}
+                                />
                             </div>
-                            <DataTable data={viewData} salary={salary} />
+                            <DataTable data={viewData} salary={salary} monthMultiplier={monthMultiplier} />
                         </div>
                     ) : (
                         <div className="h-full flex items-center justify-center text-slate-300">

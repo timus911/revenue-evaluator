@@ -191,7 +191,7 @@ export const processFileAuto = (sheet, fileName) => {
 };
 
 
-export const generateExport = (data, salary = 0) => {
+export const generateExport = (data, salary = 0, monthMultiplier = 1) => {
     // 1. Segmentation
     const segments = {
         IPD: [],
@@ -282,7 +282,8 @@ export const generateExport = (data, salary = 0) => {
     const emergProcCount = segments.Procedures.filter(i => i.grossAmount > 1600 || (i.serviceName || '').toString().toLowerCase().includes('suturing')).length;
     const dressingCount = segments.Dressings.length;
 
-    const incentive = totalRev - salary;
+    const totalSalary = salary * monthMultiplier;
+    const incentive = totalRev - totalSalary;
     const netPayout = incentive * 0.9;
 
     const statsBlock = [
@@ -300,8 +301,10 @@ export const generateExport = (data, salary = 0) => {
         ['', ''],
         ['FINANCIALS', 'INR'],
         ['Total Revenue', totalRev],
-        ['Current Salary', salary],
-        ['Incentive (Rev-Sal)', incentive],
+        ['Base Salary', salary],
+        ['Months Multiplier', monthMultiplier],
+        ['Total Deduction', totalSalary],
+        ['Incentive (Rev-Ded)', incentive],
         ['Net Payout (10% TDS)', netPayout]
     ];
 
