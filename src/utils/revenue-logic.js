@@ -90,8 +90,13 @@ const processIPD = (sheet, fileName) => {
 
         const { display, monthYear } = parseDateInfo(dateVal);
 
+        // Content-based ID for deduplication ignoring filename
+        const signature = `${dateVal}|${patient}|${serviceName}|${grossAmount}`;
+        // Simple hash of signature
+        const idHash = btoa(unescape(encodeURIComponent(signature))).replace(/[^a-zA-Z0-9]/g, '');
+
         return {
-            id: `ipd-${fileName}-${idx}`,
+            id: `ipd-${idHash}`,
             date: display,
             monthYear,
             patientName: patient,
@@ -179,8 +184,12 @@ const processOPD = (sheet, fileName) => {
         const category = isConsult ? 'OPD Consultation' : 'OPD Procedure';
         const sharePct = isConsult ? 0.70 : 0.50;
 
+        // Content-based ID for deduplication ignoring filename
+        const signature = `opd|${dateVal}|${patient}|${serviceName}|${netAmount}`;
+        const idHash = btoa(unescape(encodeURIComponent(signature))).replace(/[^a-zA-Z0-9]/g, '');
+
         return {
-            id: `opd-${isConsult ? 'c' : 'p'}-${fileName}-${idx}`,
+            id: `opd-${idHash}`,
             date: display,
             monthYear,
             patientName: patient,
