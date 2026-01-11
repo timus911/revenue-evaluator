@@ -259,19 +259,24 @@ export const generateExport = (data, salary = 0, monthMultiplier = 1) => {
 
     // 2. Build Worksheet Arrays
     const rows = [];
-    const headers = ['S.No', 'Date', 'Patient Name', 'Service', 'Category', 'Hospital Amount', 'My Share'];
+    // Updated Headers: Added Deduction & Net
+    const headers = ['S.No', 'Date', 'Patient Name', 'Service', 'Category', 'Hospital Amount', 'Deduction', 'Net Amount', 'My Share'];
 
     const addSegment = (title, items) => {
         if (items.length === 0) return;
 
         // Segment Header
-        rows.push([title.toUpperCase(), '', '', '', '', '', '']); // Bold-ish via caps
+        rows.push([title.toUpperCase(), '', '', '', '', '', '', '', '']);
         rows.push(headers);
 
         let segTotalGross = 0;
+        let segTotalDeduction = 0;
         let segTotalShare = 0;
 
         items.forEach((item, idx) => {
+            const deduction = item.manualDeduction || 0;
+            const net = item.grossAmount - deduction;
+
             rows.push([
                 idx + 1, // S.No reset
                 item.date,
@@ -279,14 +284,19 @@ export const generateExport = (data, salary = 0, monthMultiplier = 1) => {
                 item.serviceName,
                 item.category,
                 item.grossAmount,
+                deduction,
+                net,
                 item.calculatedShare
             ]);
             segTotalGross += item.grossAmount;
+            segTotalDeduction += deduction;
             segTotalShare += item.calculatedShare;
         });
 
         // Segment Total
-        rows.push(['', '', 'TOTAL ' + title, '', '', segTotalGross, segTotalShare]);
+        // Align totals with new column positions
+        // Col 5: Gross, Col 6: Ded, Col 7: Net (calc), Col 8: Share
+        rows.push(['', '', 'TOTAL ' + title, '', '', segTotalGross, segTotalDeduction, segTotalGross - segTotalDeduction, segTotalShare]);
         rows.push([]); // Spacer
         rows.push([]); // Spacer for "Bold Border" effect (visual gap)
     };
@@ -342,7 +352,7 @@ export const generateExport = (data, salary = 0, monthMultiplier = 1) => {
     const ws = utils.aoa_to_sheet(rows);
 
     // Add stats manually to the sheet object
-    const startCol = 9; // Column J (0-indexed 9) -> Leave H, I empty. Start J, K.
+    const startCol = 11; // Column L (0-indexed 11) -> Leave J, K empty. Start L, M.
     const startRow = 1; // Row 2
 
     statsBlock.forEach((statRow, rIdx) => {
@@ -359,9 +369,10 @@ export const generateExport = (data, salary = 0, monthMultiplier = 1) => {
     if (range.e.r < startRow + statsBlock.length) range.e.r = startRow + statsBlock.length;
     ws['!ref'] = utils.encode_range(range);
 
-    // Columns Widths
+    // Columns Widths: Adjusted for new columns
     ws['!cols'] = [
-        { wch: 6 }, { wch: 12 }, { wch: 25 }, { wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, // Main Data
+        { wch: 6 }, { wch: 12 }, { wch: 25 }, { wch: 30 }, { wch: 15 },
+        { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, // Amount Cols
         { wch: 5 }, { wch: 5 }, // Spacers
         { wch: 25 }, { wch: 15 } // Stats
     ];

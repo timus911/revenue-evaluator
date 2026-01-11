@@ -151,6 +151,23 @@ function App() {
             return activeFilters.includes(key);
         });
     }, [processedData, activeFilters]);
+
+    // Manual Actions
+    const handleRemoveItem = (id) => {
+        setProcessedData(prev => prev.filter(item => item.id !== id));
+    };
+
+    const handleUpdateDeduction = (id, amount) => {
+        setProcessedData(prev => prev.map(item => {
+            if (item.id !== id) return item;
+            const newDeduction = parseFloat(amount) || 0;
+            // Recalculate share: (Gross - Deduction) * 20%
+            // Verify this is IPD before applying 20%, though UI only allows it for IPD
+            // Logic assumes 20% for IPD.
+            const newShare = Math.max(0, (item.grossAmount - newDeduction) * 0.20);
+            return { ...item, manualDeduction: newDeduction, calculatedShare: newShare };
+        }));
+    };
     const summary = useMemo(() => {
         return viewData.reduce((acc, item) => {
             acc.totalRevenue += item.calculatedShare;
@@ -246,7 +263,13 @@ function App() {
                                         onMultiplierChange={setMonthMultiplier}
                                     />
                                 </div>
-                                <DataTable data={viewData} salary={salary} monthMultiplier={monthMultiplier} />
+                                <DataTable
+                                    data={viewData}
+                                    salary={salary}
+                                    monthMultiplier={monthMultiplier}
+                                    onRemove={handleRemoveItem}
+                                    onUpdateDeduction={handleUpdateDeduction}
+                                />
                             </div>
                         ) : (
                             <div className="h-full flex items-center justify-center text-slate-300">

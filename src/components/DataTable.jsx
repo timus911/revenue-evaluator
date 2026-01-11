@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { cn } from '../utils/cn';
-import { Download } from 'lucide-react';
+import { Download, Trash2 } from 'lucide-react';
 import { generateExport } from '../utils/revenue-logic';
 import * as XLSX from 'xlsx';
 
-const DataTable = ({ data, salary = 0, monthMultiplier = 1 }) => {
+const DataTable = ({ data, salary = 0, monthMultiplier = 1, onRemove, onUpdateDeduction }) => {
     const [filterType, setFilterType] = useState('ALL'); // ALL, IPD, CONSULT, DRESSING, PROC
 
     // Moved early return after hooks (Fix for previously fixed crash)
@@ -85,13 +85,15 @@ const DataTable = ({ data, salary = 0, monthMultiplier = 1 }) => {
                             <th className="px-4 py-2 border-b border-slate-200 bg-slate-50">Service</th>
                             <th className="px-4 py-2 border-b border-slate-200 bg-slate-50">Category</th>
                             <th className="px-4 py-2 border-b border-slate-200 bg-slate-50 text-right">Gross</th>
+                            <th className="px-4 py-2 border-b border-slate-200 bg-slate-50 text-right">Deduction</th>
                             <th className="px-4 py-2 border-b border-slate-200 bg-slate-50 text-right">Share</th>
+                            <th className="px-4 py-2 border-b border-slate-200 bg-slate-50 text-center">Action</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {filteredData.map((row, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50 transition-colors group">
-                                <td className="px-4 py-1.5 font-mono text-slate-500">{row.date}</td>
+                            <tr key={row.id} className="hover:bg-slate-50 transition-colors group">
+                                <td className="px-4 py-1.5 font-mono text-slate-500 whitespace-nowrap">{row.date}</td>
                                 <td className="px-4 py-1.5 font-medium text-slate-900">{row.patientName}</td>
                                 <td className="px-4 py-1.5 text-slate-600 max-w-xs truncate" title={row.serviceName}>{row.serviceName}</td>
                                 <td className="px-4 py-1.5">
@@ -105,7 +107,31 @@ const DataTable = ({ data, salary = 0, monthMultiplier = 1 }) => {
                                     </span>
                                 </td>
                                 <td className="px-4 py-1.5 text-right font-mono text-slate-400 group-hover:text-slate-600">{row.grossAmount}</td>
+                                <td className="px-4 py-1.5 text-right">
+                                    {row.category === 'IPD' ? (
+                                        <input
+                                            type="number"
+                                            className="w-20 text-right text-xs border border-slate-200 rounded px-1 py-0.5 focus:border-purple-400 focus:outline-none bg-white font-mono text-rose-600"
+                                            placeholder="0"
+                                            value={row.manualDeduction || ''}
+                                            onChange={(e) => onUpdateDeduction && onUpdateDeduction(row.id, e.target.value)}
+                                        />
+                                    ) : (
+                                        <span className="text-slate-300">-</span>
+                                    )}
+                                </td>
                                 <td className="px-4 py-1.5 text-right font-mono font-bold text-emerald-600">{Math.round(row.calculatedShare)}</td>
+                                <td className="px-4 py-1.5 text-center">
+                                    {row.category === 'IPD' && onRemove && (
+                                        <button
+                                            onClick={() => onRemove(row.id)}
+                                            className="text-slate-300 hover:text-red-500 transition-colors p-1"
+                                            title="Remove Patient"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
+                                </td>
                             </tr>
                         ))}
                     </tbody>
