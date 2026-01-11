@@ -115,7 +115,8 @@ const isExcluded = (serviceName, serviceType) => {
         'Ncct', 'Physiotherapy', 'Ecg', 'Hrct', 'Electrocardiogram', 'Cut Down',
         'Ultrasound', 'Doppler', 'Ct Head', 'Chest Xray', 'Iv Sline', 'Infusion',
         'Ryle Tube', 'Catheterisation', 'Extremities', 'Joints', 'Bones',
-        'Emergency Bed Charges', 'Bed Charges', 'Enema', 'Ct Chest', 'Nebuliser'
+        'Emergency Bed Charges', 'Bed Charges', 'Enema', 'Ct Chest', 'Nebuliser',
+        'Echo', 'Echocardiography'
     ];
     return exclusions.some(ex => serviceName.toString().toLowerCase().includes(ex.toLowerCase()));
 };
