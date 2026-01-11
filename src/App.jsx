@@ -186,10 +186,10 @@ function App() {
 
                     {/* Filter Pills Row */}
                     {filterGroups.length > 0 && (
-                        <div className="max-w-7xl mx-auto flex overflow-x-auto pb-1 space-x-4 no-scrollbar justify-center px-4">
+                        <div className="max-w-7xl mx-auto flex overflow-x-auto pb-2 space-x-4 no-scrollbar px-6">
                             {filterGroups.map(group => (
-                                <div key={group.label} className="flex items-center space-x-1 p-1 rounded-lg border border-slate-200 bg-slate-50/50">
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase mr-1 px-1">{group.label}</span>
+                                <div key={group.label} className="flex items-center space-x-1 p-1 rounded-lg border border-slate-200 bg-slate-50/50 shrink-0">
+                                    <span className="text-[10px] font-bold text-slate-600 uppercase mr-1 px-1 whitespace-nowrap">{group.label}</span>
                                     {group.items.map(cat => {
                                         const fullCat = cat === 'Cons' ? 'OPD Consult' : cat === 'Proc' ? 'OPD Proc' : 'IPD';
                                         const id = `${group.label}|${fullCat}`;
