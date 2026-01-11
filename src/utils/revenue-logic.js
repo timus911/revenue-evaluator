@@ -1,4 +1,5 @@
-import { read, utils } from 'xlsx';
+import XLSX from 'xlsx-js-style';
+const { read, utils } = XLSX;
 
 // ... (previous parsers remain unchanged)
 
