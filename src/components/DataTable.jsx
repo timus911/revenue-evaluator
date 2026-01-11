@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { cn } from '../utils/cn';
 import { Download, Trash2, Undo2 } from 'lucide-react';
 import { generateExport } from '../utils/revenue-logic';
-import XLSX from 'xlsx-js-style';
+import * as XLSX from 'xlsx';
 
 const DataTable = ({ data, salary = 0, monthMultiplier = 1, onRemove, onUpdateDeduction }) => {
     const [filterType, setFilterType] = useState('ALL'); // ALL, IPD, CONSULT, DRESSING, PROC
