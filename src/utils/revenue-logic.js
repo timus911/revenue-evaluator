@@ -276,21 +276,34 @@ export const generateExport = (data, salary = 0, monthMultiplier = 1) => {
         items.forEach((item, idx) => {
             const deduction = item.manualDeduction || 0;
             const net = item.grossAmount - deduction;
+            const isDel = item.isDeleted;
+
+            // Style for deleted rows (Attempting standard style object, likely needs Pro to render strict
+            // but we add text indicator as fallback)
+            const style = isDel ? { font: { strike: true, color: { rgb: "999999" } } } : {};
+            const cell = (v) => ({ v, t: typeof v === 'number' ? 'n' : 's', s: style });
+
+            // If deleted, name has " (VOID)" appended
+            const pName = isDel ? `${item.patientName} (VOID)` : item.patientName;
 
             rows.push([
                 idx + 1, // S.No reset
-                item.date,
-                item.patientName,
-                item.serviceName,
-                item.category,
-                item.grossAmount,
-                deduction,
-                net,
-                item.calculatedShare
+                { v: item.date, t: 's', s: style },
+                { v: pName, t: 's', s: style },
+                { v: item.serviceName, t: 's', s: style },
+                { v: item.category, t: 's', s: style },
+                { v: item.grossAmount, t: 'n', s: style },
+                { v: deduction, t: 'n', s: style },
+                { v: net, t: 'n', s: style },
+                { v: item.calculatedShare, t: 'n', s: style }
             ]);
-            segTotalGross += item.grossAmount;
-            segTotalDeduction += deduction;
-            segTotalShare += item.calculatedShare;
+
+            // Only add to totals if NOT deleted
+            if (!isDel) {
+                segTotalGross += item.grossAmount;
+                segTotalDeduction += deduction;
+                segTotalShare += item.calculatedShare;
+            }
         });
 
         // Segment Total

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { cn } from '../utils/cn';
-import { Download, Trash2 } from 'lucide-react';
+import { Download, Trash2, Undo2 } from 'lucide-react';
 import { generateExport } from '../utils/revenue-logic';
 import * as XLSX from 'xlsx';
 
@@ -92,23 +92,28 @@ const DataTable = ({ data, salary = 0, monthMultiplier = 1, onRemove, onUpdateDe
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {filteredData.map((row, idx) => (
-                            <tr key={row.id} className="hover:bg-slate-50 transition-colors group">
-                                <td className="px-4 py-1.5 font-mono text-slate-500 whitespace-nowrap">{row.date}</td>
-                                <td className="px-4 py-1.5 font-medium text-slate-900">{row.patientName}</td>
-                                <td className="px-4 py-1.5 text-slate-600 max-w-xs truncate" title={row.serviceName}>{row.serviceName}</td>
+                            <tr key={row.id} className={cn(
+                                "transition-colors group",
+                                row.isDeleted ? "bg-slate-50 opacity-60" : "hover:bg-slate-50"
+                            )}>
+                                <td className={cn("px-4 py-1.5 font-mono text-slate-500 whitespace-nowrap", row.isDeleted && "line-through decoration-slate-400")}>{row.date}</td>
+                                <td className={cn("px-4 py-1.5 font-medium text-slate-900", row.isDeleted && "line-through decoration-slate-400 text-slate-500")}>{row.patientName}</td>
+                                <td className={cn("px-4 py-1.5 text-slate-600 max-w-xs truncate", row.isDeleted && "line-through decoration-slate-400")} title={row.serviceName}>{row.serviceName}</td>
                                 <td className="px-4 py-1.5">
                                     <span className={cn(
                                         "px-1.5 py-0.5 rounded text-[10px] font-medium border",
-                                        row.category === 'IPD' && "bg-purple-50 text-purple-700 border-purple-100",
-                                        row.category === 'OPD Consultation' && "bg-sky-50 text-sky-700 border-sky-100",
-                                        row.category === 'OPD Procedure' && "bg-orange-50 text-orange-700 border-orange-100"
+                                        row.isDeleted ? "bg-slate-100 text-slate-400 border-slate-200" : (
+                                            row.category === 'IPD' ? "bg-purple-50 text-purple-700 border-purple-100" :
+                                                row.category === 'OPD Consultation' ? "bg-sky-50 text-sky-700 border-sky-100" :
+                                                    "bg-orange-50 text-orange-700 border-orange-100"
+                                        )
                                     )}>
                                         {row.category === 'OPD Consultation' ? 'Consult' : row.category === 'OPD Procedure' ? 'Proc' : 'IPD'}
                                     </span>
                                 </td>
-                                <td className="px-4 py-1.5 text-right font-mono text-slate-400 group-hover:text-slate-600">{row.grossAmount}</td>
+                                <td className={cn("px-4 py-1.5 text-right font-mono text-slate-400", !row.isDeleted && "group-hover:text-slate-600", row.isDeleted && "line-through")}>{row.grossAmount}</td>
                                 <td className="px-4 py-1.5 text-right">
-                                    {row.category === 'IPD' ? (
+                                    {row.category === 'IPD' && !row.isDeleted ? (
                                         <input
                                             type="number"
                                             className="w-20 text-right text-xs border border-slate-200 rounded px-1 py-0.5 focus:border-purple-400 focus:outline-none bg-white font-mono text-rose-600"
@@ -120,15 +125,17 @@ const DataTable = ({ data, salary = 0, monthMultiplier = 1, onRemove, onUpdateDe
                                         <span className="text-slate-300">-</span>
                                     )}
                                 </td>
-                                <td className="px-4 py-1.5 text-right font-mono font-bold text-emerald-600">{Math.round(row.calculatedShare)}</td>
+                                <td className={cn("px-4 py-1.5 text-right font-mono font-bold", row.isDeleted ? "text-slate-400 line-through" : "text-emerald-600")}>
+                                    {Math.round(row.calculatedShare)}
+                                </td>
                                 <td className="px-4 py-1.5 text-center">
                                     {row.category === 'IPD' && onRemove && (
                                         <button
                                             onClick={() => onRemove(row.id)}
-                                            className="text-slate-300 hover:text-red-500 transition-colors p-1"
-                                            title="Remove Patient"
+                                            className={cn("transition-colors p-1", row.isDeleted ? "text-slate-400 hover:text-emerald-500" : "text-slate-300 hover:text-red-500")}
+                                            title={row.isDeleted ? "Restore" : "Remove"}
                                         >
-                                            <Trash2 className="w-3.5 h-3.5" />
+                                            {row.isDeleted ? <Undo2 className="w-3.5 h-3.5" /> : <Trash2 className="w-3.5 h-3.5" />}
                                         </button>
                                     )}
                                 </td>

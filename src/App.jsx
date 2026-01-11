@@ -154,7 +154,10 @@ function App() {
 
     // Manual Actions
     const handleRemoveItem = (id) => {
-        setProcessedData(prev => prev.filter(item => item.id !== id));
+        setProcessedData(prev => prev.map(item => {
+            if (item.id === id) return { ...item, isDeleted: !item.isDeleted };
+            return item;
+        }));
     };
 
     const handleUpdateDeduction = (id, amount) => {
@@ -170,6 +173,7 @@ function App() {
     };
     const summary = useMemo(() => {
         return viewData.reduce((acc, item) => {
+            if (item.isDeleted) return acc; // Skip deleted items from totals
             acc.totalRevenue += item.calculatedShare;
             if (item.category === 'IPD') acc.ipdShare += item.calculatedShare;
             if (item.category === 'OPD Consultation') acc.opdConsultShare += item.calculatedShare;
