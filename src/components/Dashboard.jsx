@@ -1,5 +1,5 @@
 import React from 'react';
-import { IndianRupee, Wallet } from 'lucide-react';
+import { IndianRupee, Calendar } from 'lucide-react';
 import { cn } from '../utils/cn';
 
 const MiniCard = ({ label, value, colorClass }) => (
@@ -9,9 +9,10 @@ const MiniCard = ({ label, value, colorClass }) => (
     </div>
 );
 
-const Dashboard = ({ summary, salary, onSalaryChange }) => {
+const Dashboard = ({ summary, salary, monthCount = 1, totalSalary, onSalaryChange }) => {
     const { totalRevenue, ipdShare, opdConsultShare, opdProcedureShare } = summary;
-    const incentive = totalRevenue - salary;
+    const effectiveSalary = totalSalary || salary;
+    const incentive = totalRevenue - effectiveSalary;
     const netIncentive = incentive * 0.90; // TDS 10%
 
     return (
@@ -27,7 +28,15 @@ const Dashboard = ({ summary, salary, onSalaryChange }) => {
             {/* Salary & Incentive - Compact Right Side */}
             <div className="flex items-center space-x-4 bg-slate-50 p-2 rounded-lg border border-slate-100 w-full md:w-auto">
                 <div className="flex flex-col">
-                    <label className="text-[10px] font-bold uppercase text-slate-400 mb-1">Current Salary</label>
+                    <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] font-bold uppercase text-slate-400">Current Salary</label>
+                        {monthCount > 1 && (
+                            <div className="flex items-center space-x-0.5 bg-blue-100 text-blue-700 px-1 rounded ml-2" title={`Multiplying by ${monthCount} months`}>
+                                <Calendar className="w-3 h-3" />
+                                <span className="text-[9px] font-bold">x{monthCount}</span>
+                            </div>
+                        )}
+                    </div>
                     <div className="relative">
                         <IndianRupee className="w-3 h-3 absolute left-2 top-2 text-slate-400" />
                         <input
@@ -38,6 +47,11 @@ const Dashboard = ({ summary, salary, onSalaryChange }) => {
                             placeholder="0"
                         />
                     </div>
+                    {monthCount > 1 && (
+                        <span className="text-[9px] text-slate-400 mt-0.5 font-mono">
+                            Tot: ₹{(effectiveSalary / 1000).toFixed(1)}k
+                        </span>
+                    )}
                 </div>
 
                 <div className="h-8 w-px bg-slate-200 mx-2"></div>
