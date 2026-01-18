@@ -4,26 +4,30 @@ import { Download, Trash2, Undo2 } from 'lucide-react';
 import { generateExport } from '../utils/revenue-logic';
 import * as XLSX from 'xlsx';
 
-const DataTable = ({ data, salary = 0, monthMultiplier = 1, onRemove, onUpdateDeduction }) => {
+const DataTable = ({ data, salary = 0, monthMultiplier = 1, onRemove, onUpdateDeduction, grandTotals, searchQuery, onSearchChange }) => {
     const [filterType, setFilterType] = useState('ALL'); // ALL, IPD, CONSULT, DRESSING, PROC
 
-    // Moved early return after hooks (Fix for previously fixed crash)
     const filteredData = useMemo(() => {
         if (!data || data.length === 0) return [];
 
+        let res = data;
+
+        // Note: Global search is applied in parent (App.jsx) before passing 'data' here.
+
+        // 2. Category Filter (Local Table Filter)
         switch (filterType) {
-            case 'IPD': return data.filter(d => d.category === 'IPD');
-            case 'CONSULT': return data.filter(d => d.category === 'OPD Consultation');
-            case 'DRESSING': return data.filter(d => {
+            case 'IPD': res = res.filter(d => d.category === 'IPD'); break;
+            case 'CONSULT': res = res.filter(d => d.category === 'OPD Consultation'); break;
+            case 'DRESSING': res = res.filter(d => {
                 const name = (d.serviceName || '').toString().toLowerCase();
                 return name.includes('dressing') || name.includes('suture removal');
-            });
-            case 'PROC': return data.filter(d => {
+            }); break;
+            case 'PROC': res = res.filter(d => {
                 const name = (d.serviceName || '').toString().toLowerCase();
                 return d.category === 'OPD Procedure' && !name.includes('dressing') && !name.includes('suture removal');
-            });
-            default: return data;
+            }); break;
         }
+        return res;
     }, [data, filterType]);
 
     const FilterBtn = ({ label, value }) => (
@@ -43,7 +47,7 @@ const DataTable = ({ data, salary = 0, monthMultiplier = 1, onRemove, onUpdateDe
     const handleExport = () => {
         if (!data || data.length === 0) return;
         try {
-            const wb = generateExport(data, salary, monthMultiplier);
+            const wb = generateExport(data, salary, monthMultiplier, grandTotals);
             XLSX.writeFile(wb, `Revenue_Report_${new Date().toISOString().slice(0, 10)}.xlsx`);
         } catch (e) {
             console.error("Export Error:", e);
@@ -65,6 +69,15 @@ const DataTable = ({ data, salary = 0, monthMultiplier = 1, onRemove, onUpdateDe
                         <Download className="w-3 h-3" />
                         <span>Export Sheet</span>
                     </button>
+
+                    {/* Search Input - Center Aligned in header logic, practically next to export */}
+                    <input
+                        type="text"
+                        placeholder="Search Patient or Service..."
+                        value={searchQuery}
+                        onChange={(e) => onSearchChange(e.target.value)}
+                        className="ml-2 w-48 px-2 py-1 text-xs border border-slate-300 rounded focus:ring-1 focus:ring-emerald-500 outline-none"
+                    />
                 </div>
 
                 <div className="flex space-x-1 overflow-x-auto no-scrollbar max-w-full">

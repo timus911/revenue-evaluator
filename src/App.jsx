@@ -49,6 +49,7 @@ function App() {
     const [activeFilters, setActiveFilters] = useState([]);
     const [salary, setSalary] = useState(250000);
     const [monthMultiplier, setMonthMultiplier] = useState(1);
+    const [searchQuery, setSearchQuery] = useState(''); // Global Search
 
     // 1. Process Logic (Auto-Detect)
     const handleUpload = async (files) => {
@@ -72,10 +73,18 @@ function App() {
     };
 
     // 2. Identify Unique Filters (Month + Category)
+    // NOTE: Filters should probably reflect ALL data, not just searched, so user knows what's available?
+    // User Requirement: "total revenue... only including the search results".
+    // If I filter here, the pills might disappear if search excludes everything in a month.
+    // Usually, filters stay static or refine. Let's keep filters based on ALL data for stability,
+    // but the displayed numbers will change.
+
     const filterGroups = useMemo(() => {
         const groups = {};
 
         processedData.forEach(item => {
+            if (item.isExcluded) return;
+
             if (!groups[item.monthYear]) {
                 groups[item.monthYear] = {
                     label: item.monthYear,
@@ -134,23 +143,54 @@ function App() {
         );
     };
 
+    const toggleMonthGroup = (groupLabel) => {
+        // Find all filter IDs belonging to this group
+        const groupItems = filters.filter(f => f.group === groupLabel).map(f => f.id);
+
+        setActiveFilters(prev => {
+            const currentGroupActive = groupItems.every(id => prev.includes(id));
+            if (currentGroupActive) {
+                // If all active, turn them all OFF
+                return prev.filter(id => !groupItems.includes(id));
+            } else {
+                // If mixed or all off, turn them all ON
+                const newSet = new Set(prev);
+                groupItems.forEach(id => newSet.add(id));
+                return Array.from(newSet);
+            }
+        });
+    };
+
     const clearData = () => {
         setProcessedData([]);
         setActiveFilters([]);
         setSalary(250000);
         setMonthMultiplier(1);
+        setSearchQuery('');
     };
+
+    // SEARCH FILTER
+    const searchedData = useMemo(() => {
+        if (!searchQuery) return processedData;
+        const q = searchQuery.toLowerCase();
+        return processedData.filter(d =>
+            (d.patientName || '').toLowerCase().includes(q) ||
+            (d.serviceName || '').toLowerCase().includes(q) ||
+            (d.category || '').toLowerCase().includes(q)
+        );
+    }, [processedData, searchQuery]);
 
     const viewData = useMemo(() => {
         if (activeFilters.length === 0) return [];
-        return processedData.filter(item => {
+        return searchedData.filter(item => { // Changed from processedData to searchedData
+            if (item.isExcluded) return false;
             let catTag = 'IPD';
             if (item.category === 'OPD Consultation') catTag = 'OPD Consult';
             if (item.category === 'OPD Procedure') catTag = 'OPD Proc';
             const key = `${item.monthYear}|${catTag}`;
             return activeFilters.includes(key);
         });
-    }, [processedData, activeFilters]);
+    }, [searchedData, activeFilters]);
 
     // Manual Actions
     const handleRemoveItem = (id) => {
@@ -175,12 +215,65 @@ function App() {
         return viewData.reduce((acc, item) => {
             if (item.isDeleted) return acc; // Skip deleted items from totals
             acc.totalRevenue += item.calculatedShare;
-            if (item.category === 'IPD') acc.ipdShare += item.calculatedShare;
-            if (item.category === 'OPD Consultation') acc.opdConsultShare += item.calculatedShare;
-            if (item.category === 'OPD Procedure') acc.opdProcedureShare += item.calculatedShare;
+
+            if (item.category === 'IPD') {
+                acc.ipdShare += item.calculatedShare;
+            } else if (item.category === 'OPD Consultation') {
+                acc.opdConsultShare += item.calculatedShare;
+            } else if (item.category === 'OPD Procedure') {
+                // Check if it's a dressing
+                const name = (item.serviceName || '').toString().toLowerCase();
+                if (name.includes('dressing') || name.includes('suture removal')) {
+                    acc.dressingShare += item.calculatedShare;
+                } else {
+                    acc.opdProcedureShare += item.calculatedShare;
+                }
+            }
             return acc;
-        }, { totalRevenue: 0, ipdShare: 0, opdConsultShare: 0, opdProcedureShare: 0 });
+        }, { totalRevenue: 0, ipdShare: 0, opdConsultShare: 0, opdProcedureShare: 0, dressingShare: 0 });
     }, [viewData]);
+
+    const grandTotals = useMemo(() => {
+        // If no filters are active, return 0 for everything
+        if (activeFilters.length === 0) return { hospitalTotal: 0, labRevenue: 0, ipdTotal: 0, opdConsultTotal: 0, opdProcedureTotal: 0, dressingTotal: 0 };
+
+        // Use searchedData instead of processedData so hospital totals reflect search
+        return searchedData.reduce((acc, item) => {
+            if (item.isDeleted) return acc;
+
+            // Generate implicit filter key for Excluded items based on source
+            let filterCatSuffix = 'IPD';
+            if (item.sourceType === 'OPD_Consult') filterCatSuffix = 'OPD Consult';
+            else if (item.sourceType === 'OPD_Procedure') filterCatSuffix = 'OPD Proc';
+            else if (item.sourceType === 'IPD') filterCatSuffix = 'IPD';
+
+            const filterKey = `${item.monthYear}|${filterCatSuffix}`;
+
+            if (!activeFilters.includes(filterKey)) return acc;
+
+            const amount = item.grossAmount || 0;
+            acc.hospitalTotal += amount;
+
+            if (item.isExcluded) {
+                acc.labRevenue += amount;
+            } else {
+                if (item.category === 'IPD') {
+                    acc.ipdTotal += amount;
+                } else if (item.category === 'OPD Consultation') {
+                    acc.opdConsultTotal += amount;
+                } else if (item.category === 'OPD Procedure') {
+                    // Check if it's a dressing
+                    const name = (item.serviceName || '').toString().toLowerCase();
+                    if (name.includes('dressing') || name.includes('suture removal')) {
+                        acc.dressingTotal += amount;
+                    } else {
+                        acc.opdProcedureTotal += amount;
+                    }
+                }
+            }
+            return acc;
+        }, { hospitalTotal: 0, labRevenue: 0, ipdTotal: 0, opdConsultTotal: 0, opdProcedureTotal: 0, dressingTotal: 0 });
+    }, [searchedData, activeFilters]);
 
     return (
         <ErrorBoundary>
@@ -217,7 +310,12 @@ function App() {
                         <div className="max-w-7xl mx-auto flex overflow-x-auto pb-2 space-x-4 no-scrollbar px-6">
                             {filterGroups.map(group => (
                                 <div key={group.label} className="flex items-center space-x-1 p-1 rounded-lg border border-slate-200 bg-slate-50/50 shrink-0">
-                                    <span className="text-[10px] font-bold text-slate-600 uppercase mr-1 px-1 whitespace-nowrap">{group.label}</span>
+                                    <button
+                                        onClick={() => toggleMonthGroup(group.label)}
+                                        className="text-[10px] font-bold text-slate-600 uppercase mr-1 px-1 whitespace-nowrap hover:text-slate-900 transition-colors"
+                                    >
+                                        {group.label}
+                                    </button>
                                     {group.items.map(cat => {
                                         const fullCat = cat === 'Cons' ? 'OPD Consult' : cat === 'Proc' ? 'OPD Proc' : 'IPD';
                                         const id = `${group.label}|${fullCat}`;
@@ -265,6 +363,7 @@ function App() {
                                         onSalaryChange={setSalary}
                                         monthMultiplier={monthMultiplier}
                                         onMultiplierChange={setMonthMultiplier}
+                                        grandTotals={grandTotals}
                                     />
                                 </div>
                                 <DataTable
@@ -273,6 +372,9 @@ function App() {
                                     monthMultiplier={monthMultiplier}
                                     onRemove={handleRemoveItem}
                                     onUpdateDeduction={handleUpdateDeduction}
+                                    grandTotals={grandTotals} // Pass grandTotals for export
+                                    searchQuery={searchQuery}
+                                    onSearchChange={setSearchQuery}
                                 />
                             </div>
                         ) : (

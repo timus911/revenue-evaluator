@@ -84,9 +84,14 @@ const processIPD = (sheet, fileName) => {
         const grossAmount = parseAmount(depositAmt);
 
         // Treat 'IPD Treatment' as a generic name that should NOT be excluded unless specific
-        // But if serviceName matches an exclusion, skip it.
+        // But if serviceName matches an exclusion, skip it for share but keep for stats
         // We pass 'IPD' as serviceType to allow isExcluded to handle it if needed
-        if (!dateVal || !patient || isExcluded(serviceName, 'IPD')) return null;
+        if (!dateVal || !patient) return null;
+
+        const excluded = isExcluded(serviceName, 'IPD');
+        if (excluded) {
+            // We continue, but mark as excluded
+        }
 
         const { display, monthYear } = parseDateInfo(dateVal);
 
@@ -101,11 +106,12 @@ const processIPD = (sheet, fileName) => {
             monthYear,
             patientName: patient,
             serviceName: serviceName,
-            category: 'IPD',
+            category: excluded ? 'Excluded' : 'IPD',
             grossAmount: grossAmount,
-            calculatedShare: grossAmount * 0.20,
+            calculatedShare: excluded ? 0 : grossAmount * 0.20,
             sourceFile: fileName,
-            sourceType: 'IPD'
+            sourceType: 'IPD',
+            isExcluded: excluded
         };
     }).filter(item => item !== null && item.grossAmount > 0);
 };
@@ -169,7 +175,8 @@ const processOPD = (sheet, fileName) => {
         const patient = row[5];
         const netAmount = parseAmount(row[20]);
 
-        if (!patient || isExcluded(serviceName, serviceType)) return null;
+        if (!patient) return null;
+        const excluded = isExcluded(serviceName, serviceType);
 
         const { display, monthYear } = parseDateInfo(dateVal);
 
@@ -181,8 +188,16 @@ const processOPD = (sheet, fileName) => {
         // We use "consult" to be safe and cover both.
         const isConsult = sTypeLower.includes('consult') || sNameLower.includes('consult');
 
-        const category = isConsult ? 'OPD Consultation' : 'OPD Procedure';
-        const sharePct = isConsult ? 0.70 : 0.50;
+        let category = 'OPD Procedure';
+        let sharePct = 0.50;
+
+        if (excluded) {
+            category = 'Excluded';
+            sharePct = 0;
+        } else if (isConsult) {
+            category = 'OPD Consultation';
+            sharePct = 0.70;
+        }
 
         // Content-based ID for deduplication ignoring filename
         const signature = `opd|${dateVal}|${patient}|${serviceName}|${netAmount}`;
@@ -198,7 +213,8 @@ const processOPD = (sheet, fileName) => {
             grossAmount: netAmount,
             calculatedShare: netAmount * sharePct,
             sourceFile: fileName,
-            sourceType: isConsult ? 'OPD_Consult' : 'OPD_Procedure'
+            sourceType: isConsult ? 'OPD_Consult' : 'OPD_Procedure',
+            isExcluded: excluded
         };
     }).filter(item => item !== null);
 };
@@ -228,7 +244,7 @@ export const processFileAuto = (sheet, fileName) => {
 };
 
 
-export const generateExport = (data, salary = 0, monthMultiplier = 1) => {
+export const generateExport = (data, salary = 0, monthMultiplier = 1, grandTotals = null) => {
     // 1. Segmentation
     const segments = {
         IPD: [],
@@ -360,13 +376,25 @@ export const generateExport = (data, salary = 0, monthMultiplier = 1) => {
         ['Dressing Share', dressingShare], // Breaking it out
         ['', ''],
         ['FINANCIALS', 'INR'],
-        ['Total Revenue', totalRev],
+        ['Total Revenue Share', totalRev],
         ['Base Salary', salary],
         ['Months Multiplier', monthMultiplier],
         ['Total Deduction', totalSalary],
         ['Incentive (Rev-Ded)', incentive],
         ['Net Payout (10% TDS)', netPayout]
     ];
+
+    // Added Hospital Revenue Breakdown if available
+    if (grandTotals) {
+        statsBlock.push(['', '']); // Spacer
+        statsBlock.push(['HOSPITAL REVENUE (Global Context)', 'INR']);
+        statsBlock.push(['Total Hospital Revenue', grandTotals.hospitalTotal]);
+        statsBlock.push(['Total IPD', grandTotals.ipdTotal || 0]);
+        statsBlock.push(['Total OPD Consult', grandTotals.opdConsultTotal || 0]);
+        statsBlock.push(['Total OPD Proc', grandTotals.opdProcedureTotal || 0]);
+        statsBlock.push(['Total Dressings', grandTotals.dressingTotal || 0]);
+        statsBlock.push(['Total Lab & Inv. (Excluded)', grandTotals.labRevenue]);
+    }
 
     // Merge Stats into Frames
     // We'll overwrite cells in the generated sheet starting from row 2, col 11 (K)
@@ -392,12 +420,13 @@ export const generateExport = (data, salary = 0, monthMultiplier = 1) => {
     ws['!ref'] = utils.encode_range(range);
 
     // Columns Widths: Adjusted for new columns
-    ws['!cols'] = [
+    const wscols = [
         { wch: 6 }, { wch: 12 }, { wch: 25 }, { wch: 30 }, { wch: 15 },
         { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, // Amount Cols
         { wch: 5 }, { wch: 5 }, // Spacers
-        { wch: 25 }, { wch: 15 } // Stats
+        { wch: 35 }, { wch: 15 } // Stats - Increased width for Hospital Revenue label
     ];
+    ws['!cols'] = wscols;
 
     const wb = utils.book_new();
     utils.book_append_sheet(wb, ws, "Revenue Report");
